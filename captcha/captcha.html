@@ -1,52 +1,546 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Joel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <head>
+    <meta charset="utf-8" />
+    <title>Icon Ordering CAPTCHA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <style type="text/css">
-    html,
-    body {
-      background: pink;
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-    }
-
-    #captcha-container {
-      background: white;
-      width: 390px;
-      height: 300px;
-    }
-
-    /* Your style here... */
-  </style>
-</head>
-
-<body>
-  <div id="captcha-container">
-    <!-- Add your CAPTCHA here: -->
-    Hello world!
-
-    <!-- We've added a sample button. Feel free to remove it: -->
-    <button id="solve">
-      Solve!
-    </button>
-  </div>
-
-  <script type="text/javascript">
-    (function(window, document){
-      // This is how you tell the parent window that the CAPTCHA was successful.
-      function captchaSuccess() {
-        window.top.postMessage("success", '*');
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/blueprint-css/3.0.0/blueprint.min.css"
+    />
+    <style>
+      html,
+      body {
+        background: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        font-family: "Roboto", sans-serif;
       }
 
-      // Your CAPTCHA code goes here, we've added a simple example below:
-      document.getElementById('solve')
-           .addEventListener('click', () => captchaSuccess());
+      #captcha-container {
+        background: white;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
 
-    })(window, document);
-  </script>
-</body>
+      .instructions {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      #instructions-1 {
+        margin-top: 12px;
+      }
+
+      #instructions-2 {
+        margin-bottom: 12px;
+      }
+
+      .grid-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .grid {
+        flex: 1;
+        background: #e0e0e0;
+        padding: 10px;
+        border-radius: 3px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        min-height: 57px;
+        min-width: 340px;
+        max-height: 57px;
+      }
+
+      #scoring-area {
+        background: #2eff5f;
+        border: 2px solid #c3e6cb;
+      }
+
+      .grid-item {
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 4px;
+        cursor: grab;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        flex: 1;
+      }
+
+      .grid-item.shake {
+        animation: shake 0.5s;
+      }
+
+      .highlight {
+        border: 2px solid red;
+        background: #ffcccc;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="captcha-container">
+      <div class="instructions" id="instructions-1"></div>
+      <div class="instructions" id="instructions-2"></div>
+      <div class="grid-container">
+        <div class="grid" id="available-icons">
+          <!-- Available icons will be dynamically added here -->
+        </div>
+        <div id="target-container">
+          <div class="grid" id="scoring-area">
+            <!-- Icons dragged here will be scored -->
+          </div>
+          <div
+            style="display: flex; justify-content: space-between; width: 100%"
+          >
+            <div id="initial-label" style="align-self: flex-start"></div>
+            <div id="final-label" style="align-self: flex-start"></div>
+          </div>
+        </div>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=forest"
+        />
+      </div>
+      <button id="submit" disabled>Submit</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script>
+      (function () {
+        const instructionsOne = document.getElementById("instructions-1");
+        const instructionsTwo = document.getElementById("instructions-2");
+        const availableIcons = document.getElementById("available-icons");
+        const scoringArea = document.getElementById("scoring-area");
+        const submitButton = document.getElementById("submit");
+        const initialLabel = document.getElementById("initial-label");
+        const finalLabel = document.getElementById("final-label");
+        const criteria = [
+          // Tier 1
+          [
+            { start: "short", end: "tall" },
+            { start: "soft", end: "rough" },
+            { start: "funny", end: "serious" },
+            { start: "light", end: "heavy" },
+            { start: "small", end: "large" },
+          ],
+          // Tier 2
+          [
+            { start: "effeminate", end: "masculine" },
+            { start: "gentle", end: "abrasive" },
+            { start: "playful", end: "stoic" },
+            { start: "fragile", end: "sturdy" },
+            { start: "reserved", end: "outgoing" },
+          ],
+          // Tier 3
+          [
+            { start: "ostentatious", end: "unassuming" },
+            { start: "abstruse", end: "clear" },
+            { start: "whimsical", end: "pragmatic" },
+            { start: "ethereal", end: "grounded" },
+            { start: "flamboyant", end: "subdued" },
+          ],
+        ];
+
+        const icons = [
+          { id: 1, name: "diamond", icon: "diamond.svg" },
+          { id: 2, name: "mountain_flag", icon: "mountain_flag.svg" },
+          { id: 3, name: "eco", icon: "eco.svg" },
+          { id: 4, name: "hive", icon: "hive.svg" },
+          { id: 5, name: "face", icon: "face.svg" },
+          { id: 6, name: "elderly_woman", icon: "elderly_woman.svg" },
+          { id: 7, name: "flight", icon: "flight.svg" },
+          { id: 8, name: "fitness_center", icon: "fitness_center.svg" },
+          { id: 9, name: "qr_code_2", icon: "qr_code_2.svg" },
+          { id: 10, name: "public", icon: "public.svg" },
+        ];
+
+        // Expertly sorted by AI
+        const answers = {
+          "short-tall": [
+            "elderly_woman",
+            "hive",
+            "mountain_flag",
+            "diamond",
+            "eco",
+            "face",
+            "flight",
+            "fitness_center",
+            "qr_code_2",
+            "public",
+          ],
+          "soft-rough": [
+            "elderly_woman",
+            "face",
+            "hive",
+            "eco",
+            "diamond",
+            "mountain_flag",
+            "qr_code_2",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "funny-serious": [
+            "elderly_woman",
+            "face",
+            "qr_code_2",
+            "diamond",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "light-heavy": [
+            "hive",
+            "eco",
+            "elderly_woman",
+            "face",
+            "qr_code_2",
+            "public",
+            "mountain_flag",
+            "diamond",
+            "flight",
+            "fitness_center",
+          ],
+          "small-large": [
+            "qr_code_2",
+            "hive",
+            "eco",
+            "elderly_woman",
+            "face",
+            "public",
+            "mountain_flag",
+            "diamond",
+            "flight",
+            "fitness_center",
+          ],
+          "effeminate-masculine": [
+            "elderly_woman",
+            "face",
+            "flight",
+            "fitness_center",
+            "qr_code_2",
+            "public",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "diamond",
+          ],
+          "gentle-abrasive": [
+            "elderly_woman",
+            "face",
+            "hive",
+            "eco",
+            "qr_code_2",
+            "public",
+            "mountain_flag",
+            "diamond",
+            "flight",
+            "fitness_center",
+          ],
+          "playful-stoic": [
+            "face",
+            "elderly_woman",
+            "qr_code_2",
+            "diamond",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "fragile-sturdy": [
+            "elderly_woman",
+            "hive",
+            "eco",
+            "qr_code_2",
+            "face",
+            "public",
+            "mountain_flag",
+            "diamond",
+            "flight",
+            "fitness_center",
+          ],
+          "reserved-outgoing": [
+            "elderly_woman",
+            "face",
+            "qr_code_2",
+            "diamond",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "ostentatious-unassuming": [
+            "diamond",
+            "qr_code_2",
+            "hive",
+            "eco",
+            "elderly_woman",
+            "face",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "abstruse-clear": [
+            "diamond",
+            "qr_code_2",
+            "face",
+            "elderly_woman",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+          "whimsical-pragmatic": [
+            "face",
+            "elderly_woman",
+            "qr_code_2",
+            "fitness_center",
+            "diamond",
+            "hive",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+          ],
+          "ethereal-grounded": [
+            "hive",
+            "eco",
+            "qr_code_2",
+            "fitness_center",
+            "elderly_woman",
+            "face",
+            "mountain_flag",
+            "public",
+            "diamond",
+            "flight",
+          ],
+          "flamboyant-subdued": [
+            "diamond",
+            "qr_code_2",
+            "face",
+            "hive",
+            "elderly_woman",
+            "eco",
+            "mountain_flag",
+            "public",
+            "flight",
+            "fitness_center",
+          ],
+        };
+
+        const answerToIdMap = Object.fromEntries(
+          Object.entries(answers).map(([key, value]) => [
+            key,
+            value.map(
+              (iconName) => icons.find((icon) => icon.name === iconName)?.id
+            ),
+          ])
+        );
+
+        function createComparator(key) {
+          const order = answerToIdMap[key];
+          const orderMap = new Map(order.map((name, index) => [name, index]));
+          return (a, b) => (orderMap.get(a) || 0) - (orderMap.get(b) || 0);
+        }
+
+        function createIconElement(icon) {
+          const div = document.createElement("div");
+          div.className = "grid-item";
+          div.dataset.id = icon.id;
+
+          const img = document.createElement("img");
+          img.src = `./${icon.icon}`;
+          img.alt = icon.name;
+          //img.style.width = "100%";
+          img.style.height = "50%";
+
+          div.appendChild(img);
+          return div;
+        }
+
+        let level = 0;
+        let numIcons = 4;
+        let currentCriteria = "";
+        let correctOrder = [];
+        let userOrder = [];
+
+        function initializeCaptcha() {
+          // Pick a random criterion
+          currentCriteria =
+            criteria[level][Math.floor(Math.random() * criteria.length)];
+          instructionsOne.textContent = `Drag the items to the green zone, order them`;
+          instructionsTwo.textContent = `from ${currentCriteria.start} to ${currentCriteria.end}`;
+          initialLabel.textContent = currentCriteria.start;
+          finalLabel.textContent = currentCriteria.end;
+          numIcons = 4 + level;
+
+          // Shuffle and display icons in the available section
+          const shuffledIcons = [...icons]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, numIcons);
+          correctOrder = shuffledIcons.map((icon) => icon.id);
+          availableIcons.innerHTML = "";
+          scoringArea.innerHTML = "";
+          shuffledIcons.forEach((icon) => {
+            const div = document.createElement("div");
+            div.className = "grid-item";
+            div.dataset.id = icon.id;
+            div.innerHTML = createIconElement(icon).innerHTML;
+            availableIcons.appendChild(div);
+          });
+
+          // Enable drag-and-drop
+          new Sortable(availableIcons, {
+            group: "shared",
+            animation: 150,
+            onEnd: (value) => {
+              console.log("onEnd first", value);
+              submitButton.disabled = scoringArea.children.length !== numIcons;
+            },
+          });
+
+          new Sortable(scoringArea, {
+            group: "shared",
+            animation: 150,
+            onEnd: (value) => {
+              console.log("onEnd second", value);
+              submitButton.disabled = scoringArea.children.length !== numIcons;
+            },
+          });
+        }
+
+        function highlightErrors(trueOrder, orderToTest) {
+          const incorrectIndices = [];
+
+          orderToTest.forEach((id, index) => {
+            if (id !== trueOrder[index]) {
+              incorrectIndices.push(index);
+            }
+          });
+
+          Array.from(scoringArea.children).forEach((div) => {
+            div.classList.remove("highlight");
+          });
+
+          incorrectIndices.forEach((index) => {
+            const div = scoringArea.children[index];
+            div.classList.add("highlight");
+            div.classList.add("shake");
+            setTimeout(() => div.classList.remove("shake"), 500);
+          });
+        }
+
+        submitButton.addEventListener("click", () => {
+          const userOrder = Array.from(scoringArea.children).map((div) =>
+            parseInt(div.dataset.id, 10)
+          );
+
+          const correctOrder = userOrder
+            .slice(0)
+            .sort(
+              createComparator(
+                `${currentCriteria.start}-${currentCriteria.end}`
+              )
+            );
+
+          console.log("User Order:", userOrder);
+          console.log("Correct Order:", correctOrder);
+
+          const incorrectIndices = [];
+          userOrder.forEach((id, index) => {
+            if (id !== correctOrder[index]) {
+              incorrectIndices.push(index);
+            }
+          });
+
+          if (incorrectIndices.length > 0) {
+            highlightErrors(correctOrder, userOrder);
+          } else {
+            if (level === 2) {
+              window.top.postMessage("success", "*");
+              initializeCaptcha();
+            } else {
+              const successIndicator = document.createElement("div");
+              successIndicator.textContent =
+                "Correct! But more verification needed.";
+              successIndicator.style.position = "fixed";
+              successIndicator.style.top = "50%";
+              successIndicator.style.left = "50%";
+              successIndicator.style.transform = "translate(-50%, -50%)";
+              successIndicator.style.fontSize = "48px";
+              successIndicator.style.fontWeight = "bold";
+              successIndicator.style.color = "#2eff5f";
+              successIndicator.style.background = "rgba(255, 255, 255)"; // Clear background
+              successIndicator.style.padding = "20px";
+              successIndicator.style.borderRadius = "10px";
+              successIndicator.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+              document.body.appendChild(successIndicator);
+
+              setTimeout(() => {
+                document.body.removeChild(successIndicator);
+                level++;
+                initializeCaptcha();
+              }, 1500);
+              initializeCaptcha();
+            }
+          }
+        });
+
+        initializeCaptcha();
+      })();
+    </script>
+  </body>
 </html>
