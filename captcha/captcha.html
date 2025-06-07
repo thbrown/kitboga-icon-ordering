@@ -177,7 +177,7 @@
           // Tier 3
           [
             { start: "ostentatious", end: "unassuming" },
-            { start: "abstruse", end: "clear" },
+            { start: "Platonic", end: "Aristotelian" },
             { start: "whimsical", end: "pragmatic" },
             { start: "ethereal", end: "grounded" },
             { start: "flamboyant", end: "subdued" },
@@ -331,13 +331,13 @@
             "flight",
             "fitness_center",
           ],
-          "abstruse-clear": [
-            "diamond",
-            "qr_code_2",
-            "face",
+          "Platonic-Aristotelian": [
             "elderly_woman",
+            "face",
             "hive",
             "eco",
+            "diamond",
+            "qr_code_2",
             "mountain_flag",
             "public",
             "flight",
@@ -446,6 +446,8 @@
           new Sortable(availableIcons, {
             group: "shared",
             animation: 150,
+            swapThreshold: 0.9,
+
             onEnd: (value) => {
               console.log("onEnd first", value);
               submitButton.disabled = scoringArea.children.length !== numIcons;
@@ -455,6 +457,7 @@
           new Sortable(scoringArea, {
             group: "shared",
             animation: 150,
+            swapThreshold: 0.9,
             onEnd: (value) => {
               console.log("onEnd second", value);
               submitButton.disabled = scoringArea.children.length !== numIcons;
@@ -496,9 +499,6 @@
               )
             );
 
-          console.log("User Order:", userOrder);
-          console.log("Correct Order:", correctOrder);
-
           const incorrectIndices = [];
           userOrder.forEach((id, index) => {
             if (id !== correctOrder[index]) {
@@ -514,8 +514,9 @@
               initializeCaptcha();
             } else {
               const successIndicator = document.createElement("div");
-              successIndicator.textContent =
-                "Correct! But more verification needed.";
+              successIndicator.textContent = `Correct! ${
+                level + 1
+              }/3 complete.`;
               successIndicator.style.position = "fixed";
               successIndicator.style.top = "50%";
               successIndicator.style.left = "50%";
@@ -527,6 +528,7 @@
               successIndicator.style.padding = "20px";
               successIndicator.style.borderRadius = "10px";
               successIndicator.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+              successIndicator.style.textAlign = "center";
               document.body.appendChild(successIndicator);
 
               setTimeout(() => {
