@@ -1,6 +1,8 @@
 ## About
 
-This is an entry for kitboga's RECAPCHA codejam https://kitboga.com/codejam
+This is an entry for kitboga's CAPTCHA codejam https://kitboga.com/codejam
+
+Live at: https://thbrown.github.io/kitboga-icon-ordering/
 
 ## Description
 
@@ -14,6 +16,6 @@ Progressing to a next level adds an additional icon to order and applies more es
 
 # Other
 
-Icons from: https://fonts.google.com/icons
+Icons from: https://fonts.google.com/icons (Apache-2.0 license)
 
 Live at: https://thbrown.github.io/kitboga-icon-ordering/
